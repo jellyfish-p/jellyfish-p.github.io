@@ -43,9 +43,9 @@ npm run preview    # 本地预览构建产物
 public/                        # 原样拷贝的静态资源（favicon 等）
 src/
   main.ts                      # 应用入口
-  App.vue                      # 根组件
-  components/                  # 组件
-  assets/                      # 样式与图片
+  App.vue                      # 首页（全部内容与样式）
+  assets/base.css              # 重置 + 主题变量
+  assets/main.css              # 全局样式入口（引入 base.css）
 index.html                     # HTML 模板
 vite.config.ts                 # Vite 配置（含 base 与 @ 别名）
 ```
