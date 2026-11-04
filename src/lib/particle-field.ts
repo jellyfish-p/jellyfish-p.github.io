@@ -3,6 +3,7 @@
  *
  * - 粒子随机漂浮，碰到边缘反弹
  * - 鼠标半径内的粒子被吸引，靠得太近时轻微排斥，避免全部挤成一团
+ * - 粒子之间互相排斥：鼠标吸住一团粒子后快速移开，粒子会向四周散开
  * - 两个粒子距离小于 linkDistance 时连线，越近线越亮
  */
 
@@ -21,6 +22,10 @@ export interface ParticleFieldOptions {
   maxSpeed: number
   /** 任何时候都不低于这个速度（px / 帧），避免粒子停住 */
   minSpeed: number
+  /** 粒子之间开始互相排斥的距离（px） */
+  repelRadius: number
+  /** 粒子之间的排斥强度 */
+  repelForce: number
   /** 粒子与连线颜色，格式 "r, g, b" */
   color: string
 }
@@ -47,6 +52,8 @@ const DEFAULTS: ParticleFieldOptions = {
   pointerForce: 0.11,
   maxSpeed: 0.6,
   minSpeed: 0.2,
+  repelRadius: 70,
+  repelForce: 0.08,
   color: '255, 255, 255',
 }
 
@@ -56,6 +63,11 @@ const LINK_MAX_ALPHA = 0.32
 const POINTER_LINK_MAX_ALPHA = 0.5
 /** 离鼠标小于这个距离时改为排斥 */
 const POINTER_CORE = 28
+/**
+ * 两个粒子都在鼠标吸引范围内时，互斥只保留这个比例。
+ * 这样被吸住的簇会压得更紧，鼠标一移开就恢复全部互斥，簇一下子炸开
+ */
+const HELD_REPEL_SCALE = 0.3
 
 export class ParticleField {
   private readonly canvas: HTMLCanvasElement
@@ -151,6 +163,8 @@ export class ParticleField {
     const pointer = this.pointer
     const r2 = pointerRadius * pointerRadius
 
+    this.repel(dt)
+
     for (const p of this.particles) {
       // 随机游走，让轨迹不是直线
       p.vx += (Math.random() - 0.5) * 0.02 * dt
@@ -173,16 +187,21 @@ export class ParticleField {
         }
       }
 
-      // 被吸引时允许更快，并加阻尼让粒子绕着鼠标而不是直线冲过去；
-      // 鼠标离开后速度慢慢回落到漂浮速度
-      const limit = attracted ? maxSpeed * 5 : maxSpeed
-      const speed = Math.hypot(p.vx, p.vy)
+      // 被吸引时加阻尼，让粒子绕着鼠标而不是直线冲过去。
+      // 没被吸引时，超过漂浮速度的部分（比如散开时被推出去的速度）每帧衰减 3%，
+      // 所以散开是一下子炸开、再慢慢回到漂浮速度。
+      // 任何时候都不超过 maxSpeed * 5，防止排斥力把粒子推得太快
       if (attracted) {
         p.vx *= 0.97
         p.vy *= 0.97
       }
-      if (speed > limit) {
-        const k = attracted ? limit / speed : 0.97
+      const speed = Math.hypot(p.vx, p.vy)
+      const hardLimit = maxSpeed * 5
+      if (speed > hardLimit) {
+        p.vx *= hardLimit / speed
+        p.vy *= hardLimit / speed
+      } else if (!attracted && speed > maxSpeed) {
+        const k = Math.pow(0.97, dt)
         p.vx *= k
         p.vy *= k
       }
@@ -216,6 +235,52 @@ export class ParticleField {
       } else if (p.y > this.height) {
         p.y = this.height
         p.vy = -Math.abs(p.vy)
+      }
+    }
+  }
+
+  /**
+   * 粒子两两之间的排斥：距离小于 repelRadius 时互相推开，越近推得越用力。
+   * 两个粒子都被鼠标吸住时互斥减弱（HELD_REPEL_SCALE）
+   */
+  private repel(dt: number): void {
+    const { repelRadius, repelForce, pointerRadius } = this.opts
+    if (repelForce <= 0) return
+    const particles = this.particles
+    const rr = repelRadius * repelRadius
+    const pointer = this.pointer
+    const pr2 = pointerRadius * pointerRadius
+    const held = particles.map((p) => {
+      if (!pointer) return false
+      const dx = pointer.x - p.x
+      const dy = pointer.y - p.y
+      return dx * dx + dy * dy < pr2
+    })
+
+    for (let i = 0; i < particles.length; i++) {
+      const a = particles[i]!
+      for (let j = i + 1; j < particles.length; j++) {
+        const b = particles[j]!
+        let dx = a.x - b.x
+        let dy = a.y - b.y
+        let d2 = dx * dx + dy * dy
+        if (d2 >= rr) continue
+        // 两个粒子重合时随机给一个方向，否则无法计算推开的方向
+        if (d2 < 0.01) {
+          const angle = Math.random() * Math.PI * 2
+          dx = Math.cos(angle)
+          dy = Math.sin(angle)
+          d2 = 1
+        }
+        const d = Math.sqrt(d2)
+        const scale = held[i] && held[j] ? HELD_REPEL_SCALE : 1
+        const f = repelForce * scale * (1 - d / repelRadius) * dt
+        const fx = (dx / d) * f
+        const fy = (dy / d) * f
+        a.vx += fx
+        a.vy += fy
+        b.vx -= fx
+        b.vy -= fy
       }
     }
   }
