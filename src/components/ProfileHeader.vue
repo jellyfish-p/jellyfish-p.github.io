@@ -41,7 +41,6 @@ defineProps<{
   height: 88px;
   object-fit: cover;
   background: var(--bg);
-  filter: grayscale(1) contrast(1.05);
   clip-path: polygon(
     0 0,
     calc(100% - var(--cut) + 3px) 0,

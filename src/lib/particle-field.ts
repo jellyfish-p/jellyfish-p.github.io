@@ -19,6 +19,8 @@ export interface ParticleFieldOptions {
   pointerForce: number
   /** 自由漂浮时的最大速度（px / 帧） */
   maxSpeed: number
+  /** 任何时候都不低于这个速度（px / 帧），避免粒子停住 */
+  minSpeed: number
   /** 粒子与连线颜色，格式 "r, g, b" */
   color: string
 }
@@ -42,8 +44,9 @@ const DEFAULTS: ParticleFieldOptions = {
   maxCount: 140,
   linkDistance: 130,
   pointerRadius: 200,
-  pointerForce: 0.08,
-  maxSpeed: 0.45,
+  pointerForce: 0.11,
+  maxSpeed: 0.6,
+  minSpeed: 0.2,
   color: '255, 255, 255',
 }
 
@@ -123,7 +126,8 @@ export class ParticleField {
 
   private spawn(): Particle {
     const angle = Math.random() * Math.PI * 2
-    const speed = (0.3 + Math.random() * 0.7) * this.opts.maxSpeed
+    const { minSpeed, maxSpeed } = this.opts
+    const speed = minSpeed + Math.random() * (maxSpeed - minSpeed)
     return {
       x: Math.random() * this.width,
       y: Math.random() * this.height,
@@ -143,7 +147,7 @@ export class ParticleField {
   }
 
   private step(dt: number): void {
-    const { pointerRadius, pointerForce, maxSpeed } = this.opts
+    const { pointerRadius, pointerForce, maxSpeed, minSpeed } = this.opts
     const pointer = this.pointer
     const r2 = pointerRadius * pointerRadius
 
@@ -181,6 +185,19 @@ export class ParticleField {
         const k = attracted ? limit / speed : 0.97
         p.vx *= k
         p.vy *= k
+      }
+
+      // 最低速度：太慢时沿当前方向加速；几乎静止时随机挑一个方向
+      const current = Math.hypot(p.vx, p.vy)
+      if (current < minSpeed) {
+        if (current < 1e-6) {
+          const angle = Math.random() * Math.PI * 2
+          p.vx = Math.cos(angle) * minSpeed
+          p.vy = Math.sin(angle) * minSpeed
+        } else {
+          p.vx *= minSpeed / current
+          p.vy *= minSpeed / current
+        }
       }
 
       p.x += p.vx * dt
