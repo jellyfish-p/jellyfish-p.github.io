@@ -42,13 +42,23 @@ npm run preview    # 本地预览构建产物
 .github/workflows/deploy.yml   # CI：构建并部署到 Pages
 public/                        # 原样拷贝的静态资源（favicon 等）
 src/
-  main.ts                      # 应用入口
-  App.vue                      # 首页（全部内容与样式）
-  assets/base.css              # 重置 + 主题变量
-  assets/main.css              # 全局样式入口（引入 base.css）
+  data/profile.ts              # 页面全部内容：名字、简介、项目、联系方式
+  lib/particle-field.ts        # 粒子背景引擎（Canvas 2D，无依赖）
+  components/
+    ParticleBackground.vue     # 粒子背景：挂载画布、转发鼠标事件、减少动态效果时停止
+    ProfileHeader.vue          # 头像、名字、一句话介绍
+    SectionBlock.vue           # 分区标题
+    ProjectCard.vue            # 切角项目卡片
+    ContactList.vue            # 联系方式列表
+    SiteFooter.vue             # 页脚
+  App.vue                      # 页面组装
+  assets/base.css              # 重置 + 黑白灰主题变量
+  assets/main.css              # 全局样式入口
 index.html                     # HTML 模板
 vite.config.ts                 # Vite 配置（含 base 与 @ 别名）
 ```
+
+改内容只需要改 `src/data/profile.ts`；粒子数量、连线距离、吸引半径等参数在 `src/lib/particle-field.ts` 顶部的 `DEFAULTS` 里。
 
 ## 推荐 IDE 配置
 

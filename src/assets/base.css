@@ -1,8 +1,27 @@
-/* Reset & 主题变量（被 main.css 引入） */
+/* Reset 与主题变量（被 main.css 引入） */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+:root {
+  /* 黑白灰 */
+  --bg: #0a0a0a;
+  --surface: rgba(12, 12, 12, 0.86);
+  --surface-hover: rgba(22, 22, 22, 0.92);
+  --fg: #f2f2f2;
+  --text: #c8c8c8;
+  --muted: #7a7a7a;
+  --line: #2a2a2a;
+  --line-strong: #4a4a4a;
+
+  /* 切角尺寸，所有带棱角的块共用 */
+  --cut: 12px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  color-scheme: dark;
 }
 
 html {
@@ -28,13 +47,18 @@ a {
   text-decoration: none;
 }
 
-:root {
-  --bg: #0b0d10;
-  --fg: #e8eaed;
-  --muted: #8b93a1;
-  --line: #23272e;
-  --card: #11151a;
-  --accent: #42b883;
+:focus-visible {
+  outline: 1px solid var(--fg);
+  outline-offset: 3px;
+}
 
-  color-scheme: dark;
+::selection {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
